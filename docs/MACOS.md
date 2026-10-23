@@ -94,6 +94,35 @@ simulator_port: 0        # 0 = 自动选择；MuMu Pro 用户填 16384，TCP 设
 > minitouch 起不来。本分支已自动退回 **`adb shell input`** 触摸后端（`shell_input.py`）：
 > 点击/截图不受影响，拖拽与滑动慢一些（每条命令约 35ms），跑日常与镜牢够用。
 
+### 网络与代理（登录 Google 必须）
+
+AVD 走 QEMU 的 NAT（`10.0.2.x`），出网流量由宿主机上的 emulator 进程发起，**用的是宿主机网络**。
+但两种 VPN 形态结果完全不同：
+
+| 宿主机 VPN 形态 | 模拟器能否上网 | 处理 |
+|---|---|---|
+| TUN / 全局路由（Clash Verge 的「Tun 模式」、Surge 增强模式等） | ✅ 自动跟随 | 直接启动 |
+| 只有「系统代理 / 混合端口」（HTTP、SOCKS5） | ❌ Android 不读 macOS 系统代理 | 启动时加 `-http-proxy` |
+
+`scripts/start_avd_macos.sh` 会自动探测本地代理端口（7897 / 7890 / 6152 / 1087 / 8888 / 1080）：
+
+```bash
+./scripts/start_avd_macos.sh                       # 自动探测并带上 -http-proxy
+PROXY=http://127.0.0.1:7897 ./scripts/start_avd_macos.sh
+PROXY=none ./scripts/start_avd_macos.sh            # 已经开了 TUN 就用这个
+DRY_RUN=1 ./scripts/start_avd_macos.sh             # 只打印将执行的命令
+```
+
+验证：
+
+```bash
+adb shell 'toybox nc -w 3 10.0.2.2 7897 && echo proxy-ok'   # 10.0.2.2 = 宿主机环回
+adb shell monkey -p com.android.vending -c android.intent.category.LAUNCHER 1   # 能进登录页即 OK
+```
+
+> AALC 跑任务本身不需要 Google，只有「Play 商店下载游戏 / 首次登录」需要代理；
+> 装好游戏后即使代理关了，AALC 的 adb 链路也照常工作。
+
 ### BlueStacks Air（免费，但 ADB 不确定）
 
 BlueStacks Air 是 Apple Silicon 上的免费版本，但**官方设置里可能没有 ADB 开关**
