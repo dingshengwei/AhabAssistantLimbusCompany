@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: T201  (命令行自检脚本，需要用 print 输出报告)
 """macOS 环境自检：权限、adb、游戏窗口、截图、分辨率。
 
     ./scripts/check_macos_env.py
