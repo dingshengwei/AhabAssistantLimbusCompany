@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# ⚠️ 现版 Limbus（Unity 6）在 AVD 上会崩溃，见 docs/MACOS.md；本脚本仅为历史/旧版保留。
+#
 # 启动 AALC 的 AVD（竖屏 1080x1920，游戏横屏后即 1920x1080）。
 #
 #   ./scripts/start_avd_macos.sh                     # 自动探测本地代理（Clash 7897 等）

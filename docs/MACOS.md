@@ -34,12 +34,14 @@ MuMu Pro 是收费的，macOS 上可以完全免费跑起来，按推荐顺序�
 
 | 方案 | 费用 | AALC 走哪条链路 | 适配度 |
 |---|---|---|---|
-| **Android Studio AVD**（推荐，已为你装好） | 完全免费开源 | adb（端口填 `0` 自动选设备） | 好：安卓版 16:9，可后台 |
-| **PlayCover**（本机已装，但需要 IPA） | 免费开源 | 原生窗口（ScreenCaptureKit + CGEvent） | 实验性：需把窗口设成 16:9 |
-| **BlueStacks Air** | 免费（可选购会员） | adb（端口 5555，需确认有 ADB 开关） | 好，安卓版 16:9 |
-| ~~MuMu Pro~~ | 收费 | adb（端口 16384） | 好，但要花钱 |
+| **安卓真机 + USB 调试** | 0 元 | adb（`simulator_port: 0` 自动选设备） | ✅ 推荐：链路已在本分支验证 |
+| **MuMu Pro** | 7 天试用后 28 元/月 | adb（端口 16384） | ✅ 能跑现版 Limbus |
+| ~~Android Studio AVD~~ | 免费 | adb（端口 0） | ❌ 现版 Limbus 是 Unity 6，AVD 只有 GLES 3.0 → 启动即 SIGSEGV |
+| **PlayCover** | 免费 | 原生窗口（ScreenCaptureKit + CGEvent） | 需自备 IPA，窗口要 16:9 |
+| **BlueStacks Air** | 免费 | adb（端口 5555，需确认有 ADB 开关） | 未验证 |
 
-**结论**：没有 IPA 就走 **AVD**（安卓版 + adb，免费且链路最稳）；有 IPA 且不想开模拟器再用 **PlayCover**（窗口必须 16:9）。
+**结论**：没有 IPA 时优先 **安卓真机 + USB 调试**（免费、稳）；其次是 MuMu Pro（收费但能跑）。
+AVD 这条路已经实测走不通（见下），除非你玩的是旧版客户端。
 
 ### PlayCover 方式（零安装成本）
 
@@ -55,7 +57,38 @@ MuMu Pro 是收费的，macOS 上可以完全免费跑起来，按推荐顺序�
 > AALC 会在日志里告警并大概率识别失败，务必先按上面的方式改成 1920×1080。
 > 若画面上下/左右出现黑边（应用内 letterbox），也需要在应用设置里改成拉伸/填充。
 
-### Android Studio AVD（推荐，完全免费）
+### ~~Android Studio AVD~~（2026-10 实测不可用）
+
+> **重要结论（2026-10-24 实测）**
+> Limbus 的安卓版已升级到 **Unity 6（`6000.3.12f1`，游戏 1.117.1，targetSdk 36）**，
+> 在 AVD 上**启动即崩溃**：
+>
+> ```
+> Version '6000.3.12f1', CPU 'arm64-v8a'
+> signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), Cause: null pointer dereference
+> backtrace: #00 <anonymous>
+> VKQUALITY: RECOMMENDATION_GLES_BECAUSE_NO_DEVICE_MATCH   ← Vulkan 匹配不上
+> ANDROID_EMU_gles_max_version_3_0                          ← 只有 GLES 3.0
+> ```
+>
+> Android 13 + `-gpu host`、Android 13 + `-gpu swiftshader_indirect`（能到 GLES 3.1）、
+> Android 15 镜像，三种组合都是同一个 SIGSEGV。Unity 6 需要 GLES 3.1 / 可用的 Vulkan，
+> 而 macOS 上 AVD 的 GPU 翻译层上限是 GLES 3.0，改配置绕不过去。
+> AALC 本身没问题：设备连接、1920×1080 截图（234ms）、点击与上滑都在上面验证过了。
+>
+> 下面的步骤保留给“旧版客户端 / 以后 AVD 修好”的情况。
+
+### 安卓真机（推荐）
+
+1. 手机打开「开发者选项 → USB 调试」，用数据线连 Mac，手机上点「允许 USB 调试」；
+2. 确认设备：
+   ```bash
+   ~/Library/Android/sdk/platform-tools/adb devices     # 或任意 adb，如 brew install android-platform-tools
+   ```
+3. AALC 设置：勾选「使用模拟器」→ 类型「其他」→ 主机 `127.0.0.1` → **端口 `0`**（0 = 自动选第一台已授权设备）；
+4. 手机上把 Limbus 开起来，AALC 就能截屏/点击（真机 GPU 不存在 Unity 6 的限制）。
+
+### Android Studio AVD（历史步骤，现版 Limbus 跑不起来）
 
 一条命令装好（SDK + emulator + Google Play arm64 镜像 + 竖屏 1080x1920 的 AVD）：
 

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# ⚠️ 2026-10 实测：现版 Limbus（Unity 6 / 6000.3.12f1）在 AVD 上启动即 SIGSEGV，
+#    AVD 的 GPU 翻译层在 macOS 上只有 GLES 3.0，满足不了 Unity 6。本脚本仅保留给
+#    旧版客户端或以后 AVD 修复后再用；要跑现版请用「安卓真机 + USB 调试」。
+#    详情见 docs/MACOS.md。
+#
 # 在 macOS（Apple Silicon）上准备一套免费的 Android 模拟器：
 # Android SDK commandline-tools + emulator + Google Play arm64 系统镜像 + 1920x1080 的 AVD。
 #
