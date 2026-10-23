@@ -100,6 +100,12 @@ python3.12 -m venv .venv
 .venv/bin/python main.py
 ```
 
+环境自检（只读，不会动游戏，先跑它最快定位问题）：
+
+```bash
+./scripts/check_macos_env.py
+```
+
 首次启动需要在 AALC 里完成两项授权（系统设置 → 隐私与安全性）：
 
 1. **屏幕录制**：截图用。未授权时截图会全黑/失败。
