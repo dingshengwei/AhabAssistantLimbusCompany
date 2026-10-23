@@ -9,6 +9,25 @@ Mac 上从源码运行。
 
 ![AALC 在 macOS 上运行](images/aalc-macos-gui.png)
 
+## 仓库与分支
+
+| 项 | 值 |
+|---|---|
+| 上游 | [KIYI671/AhabAssistantLimbusCompany](https://github.com/KIYI671/AhabAssistantLimbusCompany) |
+| 本分支 | [dingshengwei/AhabAssistantLimbusCompany `macos`](https://github.com/dingshengwei/AhabAssistantLimbusCompany/tree/macos)（已推送） |
+| 基线 | 上游 `main` @ `e1d1749`（2026-10-19） |
+| 本地目录 | `~/workspace/dshspace/AALC` |
+| 开 PR | https://github.com/dingshengwei/AhabAssistantLimbusCompany/pull/new/macos |
+
+与上游保持同步：
+
+```bash
+cd ~/workspace/dshspace/AALC
+git fetch upstream
+git merge upstream/main      # 冲突优先保留 module/platform 与 IS_MACOS 分支
+git push origin macos
+```
+
 ## 两种运行游戏的方式
 
 | | MuMu Pro（安卓模拟器，推荐先跑通） | PlayCover（iOS 版直跑） |
