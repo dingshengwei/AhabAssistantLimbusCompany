@@ -8,6 +8,7 @@ import win32gui
 from app import mediator
 from module.config import cfg
 from module.logger import log
+from module.platform import IS_MACOS
 from utils.singletonmeta import SingletonMeta
 
 if TYPE_CHECKING:
@@ -325,6 +326,11 @@ class Screen(metaclass=SingletonMeta):
                 self.game.start_game()
                 return False
             else:
+                if IS_MACOS and not cfg.simulator:
+                    # macOS 无法像 Win32 那样把窗口改成固定 16:9，改为让分辨率基准跟随窗口
+                    from module.platform.macos import resolution
+
+                    resolution.sync_window_metrics(self.handle.hwnd)
                 return True
         except Exception as e:
             log.error(f"未能获取到游戏窗口: {e}")

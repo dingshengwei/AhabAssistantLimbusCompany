@@ -28,18 +28,60 @@ git merge upstream/main      # 冲突优先保留 module/platform 与 IS_MACOS �
 git push origin macos
 ```
 
-## 两种运行游戏的方式
+## 免费的游戏运行方式
 
-| | MuMu Pro（安卓模拟器，推荐先跑通） | PlayCover（iOS 版直跑） |
-|---|---|---|
-| 游戏画面 | 安卓版，可自定义 16:9 分辨率 | iPad 版，约 4:3 |
-| AALC 取图/操作 | adb 截图 + adb/minitouch 点击（`cfg.simulator`） | 原生窗口：ScreenCaptureKit 截图 + CGEvent 点击 |
-| 需要的系统权限 | 无 | 屏幕录制 + 辅助功能 |
-| 后台运行 | 可以（不抢占鼠标） | 不行，AALC 会移动真实鼠标并抢占前台 |
-| 模板匹配 | 与上游一致（16:9，可缩放） | 4:3 画面，模板坐标偏差大，需按实际分辨率校准 |
-| 成熟度 | 高（复用上游模拟器链路） | 实验性 |
+MuMu Pro 是收费的，macOS 上可以完全免费跑起来，按推荐顺序：
 
-**建议**：先用 MuMu Pro + adb 模式跑通日常/镜牢，再考虑 PlayCover 原生窗口模式。
+| 方案 | 费用 | AALC 走哪条链路 | 适配度 |
+|---|---|---|---|
+| **PlayCover**（本机已装） | 免费开源 | 原生窗口（ScreenCaptureKit + CGEvent） | 实验性：需把窗口设成 16:9 |
+| **BlueStacks Air** | 免费（可选购会员） | adb（`simulator_type=10`，端口 5555） | 好，安卓版 16:9 |
+| **Android Studio AVD** | 完全免费开源 | adb（端口 5555） | 好，但性能一般、内存占用高 |
+| ~~MuMu Pro~~ | 收费 | adb（端口 16384） | 好，但要花钱 |
+
+**结论**：想零成本又稳，选 **BlueStacks Air**（安卓版 + adb）；不想再装模拟器就用 **PlayCover**，但必须把窗口调成 16:9，否则模板会错位。
+
+### PlayCover 方式（零安装成本）
+
+1. PlayCover 里安装并启动 Limbus Company；
+2. 打开 PlayCover 的「应用设置 → 显示」：
+   - 窗口尺寸填 **1920 × 1080**（或用自定义分辨率），宽高比选 **16:9**
+   - 关掉「悬浮窗 / 隐藏标题栏」之类会改变窗口尺寸的选项
+3. AALC 设置里**不要**勾选「使用模拟器」，键鼠保持「前台」；
+4. 首次运行 AALC 会通过 `CGWindowList` 找到窗口，并自动把本次会话的分辨率基准
+   对齐到窗口高度（`cfg.set_win_size`，只改内存不落盘）。
+
+> PlayCover 默认是 iPad 的 4:3 画布，AALC 的模板全部按 16:9 制作。窗口不是 16:9 时
+> AALC 会在日志里告警并大概率识别失败，务必先按上面的方式改成 1920×1080。
+> 若画面上下/左右出现黑边（应用内 letterbox），也需要在应用设置里改成拉伸/填充。
+
+### BlueStacks Air / Android Studio AVD（安卓版 + adb）
+
+1. 安装 [BlueStacks Air](https://www.bluestacks.com/mac)（Apple Silicon 版，免费）
+   或 Android Studio 的 AVD（Android 11+ arm64 镜像）；
+2. 打开 ADB 调试：
+   - BlueStacks Air：设置 → 高级 → 开启 Android Debug Bridge（默认 `127.0.0.1:5555`）
+   - AVD：启动时加 `-writable-system` 即可，adb 端口固定 `5555`
+3. 装好 adb（本仓库脚本，一次性）：
+
+   ```bash
+   ./scripts/setup_adb_macos.sh          # 下载官方 platform-tools 到 assets/binary/platform-tools
+   ```
+
+4. AALC 设置页：勾选「使用模拟器」→ 类型选「其他」→ 主机 `127.0.0.1` → 端口 `5555`
+5. 游戏分辨率建议在模拟器里设成 **1920×1080（16:9）**，与 `set_win_size` 一致。
+
+`config.yaml` 对应键：
+
+```yaml
+simulator: true
+simulator_type: 10
+simulator_host: 127.0.0.1
+simulator_port: 5555     # MuMu Pro 用户填 16384
+```
+
+> 注：AALC 启动时会按 PATH、`assets/binary/platform-tools`、`~/Library/Android/sdk`
+> 的顺序找 adb；找不到会在日志里提示运行 `scripts/setup_adb_macos.sh`。
 
 ## 安装与启动
 
@@ -65,25 +107,6 @@ python3.12 -m venv .venv
 
 授权对象是「运行 AALC 的终端 / Python」或打包后的 `AALC.app`；改完权限需重启进程。
 
-## 使用 MuMu Pro（adb 模式）
-
-1. 启动 MuMu Pro，安装并登录 Limbus Company。
-2. MuMu Pro 设置里打开 ADB 调试（默认 `127.0.0.1:16384`）。
-3. AALC 设置页：
-   - 勾选「使用模拟器」
-   - 模拟器类型选「其他」（`simulator_type = 10`）
-   - `simulator_host = 127.0.0.1`，`simulator_port = 16384`
-4. 点「连接」后即可正常执行任务。
-
-`config.yaml` 里对应的键：
-
-```yaml
-simulator: true
-simulator_type: 10
-simulator_host: 127.0.0.1
-simulator_port: 16384
-```
-
 ## 使用 PlayCover（实验性）
 
 1. 用 PlayCover 安装并启动 Limbus Company，把窗口放在主屏、不要最小化。
@@ -108,7 +131,7 @@ simulator_port: 16384
   上游业务代码不需要改 import。
 - `main.py`：跳过 UAC 提权与 DPI 设置，安装兼容层并按平台调整默认配置。
 - macOS 输入后端 `MacInput`（复用 pyautogui/CGEvent，中文输入走剪贴板 + Cmd+V）。
-- 游戏启动：`open -a`（PlayCover / MuMu Pro）。
+- 游戏启动：`open -a`（PlayCover / BlueStacks Air / MuMu Pro）。
 - 通知：macOS 通知中心。
 
 未实现 / 待办：
@@ -116,7 +139,7 @@ simulator_port: 16384
 - PyInstaller `.app` / dmg 打包与签名、公证（下一步）。
 - 自动更新：macOS 上直接跳过（上游更新包是 Windows exe/7z）。
 - 关机/休眠/锁屏、开机自启、任务计划等 Windows 专属功能。
-- MuMu Pro 的“一键启动/多开管理”（上游依赖 Windows 注册表与 MuMuManager.exe）。
+- 模拟器的“一键启动/多开管理”（上游依赖 Windows 注册表与 MuMuManager.exe；BlueStacks Air / AVD 需手动启动）。
 - 性能：当前每次截图重新创建 ScreenCaptureKit 会话（约 200 ms），后续可复用 `SCStream` 降到 10 ms 级。
 
 ## 目录结构（新增部分）

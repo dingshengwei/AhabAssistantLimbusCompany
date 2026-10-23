@@ -40,6 +40,9 @@ class Game(metaclass=SingletonMeta):
             self.game_path,
             "LimbusCompany",
             "Limbus Company",
+            # 免费方案优先（BlueStacks Air / PlayCover），MuMu Pro 收费
+            "BlueStacks Air",
+            "BlueStacks",
             "MuMu Pro",
             "MuMu模拟器 Pro",
             "MuMu Player Pro",

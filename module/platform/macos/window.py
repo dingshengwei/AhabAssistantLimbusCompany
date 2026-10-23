@@ -308,29 +308,34 @@ def set_size(win_id: int, width: float, height: float) -> bool:
 
 
 def rect_pixels(win_id: int, client: bool = False) -> tuple[int, int, int, int]:
-    """窗口矩形（像素）。macOS 不做客户区/外框区分，两者相同。"""
+    """窗口矩形。
+
+    macOS 统一使用“逻辑点”（logical points）作为坐标系，也就是 Retina 下的 1x 尺寸：
+    截图、模板匹配、点击坐标全部在同一空间，避免 2x 屏上出现 2 倍错位。
+    macOS 不做客户区/外框区分，client 参数仅为兼容上游接口。
+    """
     info = window_info(win_id)
     if info is None:
         return (0, 0, 0, 0)
-    rect = info["rect"]
-    scale = display.screen_for_rect(rect)["scale"]
-    return display.to_pixels(rect, scale)
+    left, top, right, bottom = info["rect"]
+    return (
+        int(round(left)),
+        int(round(top)),
+        int(round(right)),
+        int(round(bottom)),
+    )
 
 
 def scale_of(win_id: int) -> float:
-    info = window_info(win_id)
-    if info is None:
-        return 1.0
-    return display.screen_for_rect(info["rect"])["scale"]
+    """兼容上游“像素坐标 -> 屏幕坐标”的换算；macOS 全程逻辑点，故恒为 1.0。"""
+    return 1.0
 
 
 def monitor_info(win_id: int) -> dict:
     info = window_info(win_id)
     if info is None:
-        return display.monitor_info(None)
-    rect = info["rect"]
-    scale = display.screen_for_rect(rect)["scale"]
-    return display.monitor_info(rect, scale)
+        return display.monitor_info(None, scale=1.0)
+    return display.monitor_info(info["rect"], scale=1.0)
 
 
 def pid_of(win_id: int) -> int:

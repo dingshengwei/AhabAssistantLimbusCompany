@@ -38,3 +38,6 @@ __main_dev_temp__.py
 
 # 其他
 .worktrees
+# macOS 运行时下载的 adb（scripts/setup_adb_macos.sh）
+assets/binary/platform-tools/
+.venv/

@@ -30,7 +30,7 @@ from Quartz import (
 
 from module.logger import log
 
-from . import display, window
+from . import window
 
 try:
     from CoreFoundation import CFRunLoopRunInMode, kCFRunLoopDefaultMode
@@ -117,9 +117,10 @@ _filter_cache: dict[int, tuple[object, object, int, int]] = {}
 
 def _build_filter(win_id: int):
     rect = window.window_info(win_id)["rect"]
-    scale = display.screen_for_rect(rect)["scale"]
-    width = max(1, int(round((rect[2] - rect[0]) * scale)))
-    height = max(1, int(round((rect[3] - rect[1]) * scale)))
+    # 按逻辑点截图（Retina 下由 ScreenCaptureKit 下采样到 1x），
+    # 保证截图尺寸 == 窗口 rect，从而与模板/点击坐标一致。
+    width = max(1, int(round(rect[2] - rect[0])))
+    height = max(1, int(round(rect[3] - rect[1])))
 
     cached = _filter_cache.get(win_id)
     if cached is not None:

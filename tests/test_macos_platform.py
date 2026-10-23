@@ -109,3 +109,55 @@ def test_screenshot_returns_window_pixels(monkeypatch):
 
     left, top, right, bottom = screen.handle.rect(True)
     assert image.size == (right - left, bottom - top)
+
+
+def test_window_rect_matches_logical_bounds():
+    """rect 使用逻辑点，与 CGWindow 的 bounds 一致（Retina 不做 2x 放大）。"""
+    from module.platform.macos import window
+
+    candidates = [w for w in window.list_windows() if w["layer"] == 0]
+    if not candidates:
+        pytest.skip("当前没有窗口")
+    target = candidates[0]
+    left, top, right, bottom = window.rect_pixels(target["id"])
+    expected = tuple(int(round(v)) for v in target["rect"])
+    assert (left, top, right, bottom) == expected
+
+
+def test_resolution_plan_detects_16_9():
+    from module.platform.macos import resolution
+
+    ok = resolution.plan_window_metrics(1920, 1080)
+    assert ok["valid"] and ok["aspect_ok"] and ok["height"] == 1080
+
+    bad = resolution.plan_window_metrics(1194, 834)  # iPad 4:3
+    assert bad["valid"] and not bad["aspect_ok"]
+
+    invalid = resolution.plan_window_metrics(0, 0)
+    assert invalid["valid"] is False
+
+
+def test_resolution_sync_updates_session_only():
+    from module.config import cfg
+    from module.platform.macos import resolution, window
+
+    candidates = [w for w in window.list_windows() if w["layer"] == 0 and (w["rect"][2] - w["rect"][0]) > 200]
+    if not candidates:
+        pytest.skip("当前没有可用窗口")
+
+    before = cfg.get_value("set_win_size", 1080)
+    plan = resolution.sync_window_metrics(candidates[0]["id"])
+    assert plan is not None and plan["valid"]
+    assert cfg.get_value("set_win_size") == plan["height"]
+    # 只改内存，不写盘：恢复现场
+    cfg.config.set_win_size = before
+
+
+def test_adb_discovery():
+    from module.platform.macos import adb
+
+    found = adb.find_adb()
+    if found is None:
+        pytest.skip("本机未安装 adb（可运行 scripts/setup_adb_macos.sh）")
+    assert adb.version() is not None
+    assert isinstance(adb.devices(), list)

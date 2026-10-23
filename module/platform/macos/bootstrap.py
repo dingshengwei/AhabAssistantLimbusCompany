@@ -64,6 +64,15 @@ def install(verbose: bool = True) -> bool:
     from module.platform.win32_compat import install as install_compat
 
     installed = install_compat()
+
+    # adb 供模拟器模式使用；找不到时只记日志，不影响原生窗口模式
+    try:
+        from . import adb as mac_adb
+
+        mac_adb.ensure_adb_on_path()
+    except Exception as exc:  # pragma: no cover
+        log.debug(f"adb 初始化失败: {exc}")
+
     _installed = True
     if verbose and installed:
         log.debug(f"macOS Win32 兼容层已安装: {', '.join(installed)}")
@@ -107,8 +116,32 @@ def log_runtime_hints() -> None:
         log.info("未检测到 MuMu Pro / PlayCover，请安装后把游戏窗口跑起来再启动任务")
 
 
+def log_adb_hints() -> None:
+    """模拟器模式依赖 adb，给出可执行的修复建议。"""
+    try:
+        from module.config import cfg
+
+        from . import adb as mac_adb
+    except Exception:
+        return
+    if not cfg.get_value("simulator", False):
+        return
+    status = mac_adb.status()
+    if status["adb"] is None:
+        log.warning("模拟器模式需要 adb，但当前未找到：请运行 ./scripts/setup_adb_macos.sh（下载官方 platform-tools）")
+        return
+    if status["devices"]:
+        log.info(f"adb 已就绪: {status['version']}，设备: {', '.join(status['devices'])}")
+        return
+    log.warning(
+        "adb 已找到但还没有连接设备。免费模拟器可用 BlueStacks Air / Android Studio AVD，"
+        "开启 ADB 后运行 adb connect 127.0.0.1:5555（MuMu Pro 为 16384）"
+    )
+
+
 def log_permission_hints() -> None:
     log_runtime_hints()
+    log_adb_hints()
     status = ensure_permissions()
     if not status["screen_recording"]:
         log.warning(
