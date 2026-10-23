@@ -13,24 +13,32 @@ _ORIG_SSLKEYLOGFILE = os.environ.pop("SSLKEYLOGFILE", None)
 os.chdir(
     os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
 )
-# 解决 Windows DPI 缩放问题
-from ctypes import c_void_p, windll
 
-try:
-    # 1. 尝试 Win10 1703+ 的最强方案 (Per Monitor V2)
-    # -4 对应 DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
-    windll.user32.SetProcessDpiAwarenessContext(c_void_p(-4))
-except (AttributeError, OSError):
+# macOS: 必须在任何 win32*/ctypes.windll 导入之前安装兼容层。
+if sys.platform == "darwin":
+    from module.platform.macos.bootstrap import install as _install_mac_compat
+
+    _install_mac_compat()
+
+if sys.platform != "darwin":
+    # 解决 Windows DPI 缩放问题
+    from ctypes import c_void_p, windll
+
     try:
-        # 2. 尝试 Win8.1+ 的方案 (Per Monitor)
-        # 2 对应 PROCESS_PER_MONITOR_DPI_AWARE
-        windll.shcore.SetProcessDpiAwareness(2)
+        # 1. 尝试 Win10 1703+ 的最强方案 (Per Monitor V2)
+        # -4 对应 DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+        windll.user32.SetProcessDpiAwarenessContext(c_void_p(-4))
     except (AttributeError, OSError):
         try:
-            # 3. 最后的兜底方案 (Win7/Vista)
-            windll.user32.SetProcessDPIAware()
-        except Exception:
-            pass
+            # 2. 尝试 Win8.1+ 的方案 (Per Monitor)
+            # 2 对应 PROCESS_PER_MONITOR_DPI_AWARE
+            windll.shcore.SetProcessDpiAwareness(2)
+        except (AttributeError, OSError):
+            try:
+                # 3. 最后的兜底方案 (Win7/Vista)
+                windll.user32.SetProcessDPIAware()
+            except Exception:
+                pass
 
 # 先配好日志（给 "AALC" logger 挂 handler），再 import 会在 import 期就打日志的 app/config 模块，
 # 否则那些启动日志会丢。
@@ -45,6 +53,13 @@ import pyuac
 from app.language_manager import LanguageManager
 from app.my_app import MainWindow
 from module.config import cfg
+
+# macOS: 应用平台默认配置并提示系统权限（屏幕录制 / 辅助功能）。
+if sys.platform == "darwin":
+    from module.platform.macos.bootstrap import apply_macos_defaults, log_permission_hints
+
+    apply_macos_defaults()
+    log_permission_hints()
 
 if not pyuac.isUserAdmin():
     try:
@@ -114,6 +129,11 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     app.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)
+
+    if sys.platform == "darwin":
+        from module.platform.macos.bootstrap import patch_qt_macos
+
+        patch_qt_macos()
 
     # 创建主窗口
     ui = MainWindow(sys.argv)

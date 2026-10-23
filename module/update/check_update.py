@@ -17,6 +17,7 @@ from app.card.messagebox_custom import BaseInfoBar, MessageBoxUpdate
 from module.config import cfg
 from module.decorator.decorator import begin_and_finish_time_log
 from module.logger import log
+from module.platform import IS_MACOS
 from utils.utils import decrypt_string
 
 md_renderer = MarkdownIt("gfm-like", {"html": True})
@@ -438,6 +439,9 @@ def update(assets_url):
     从给定的URL下载更新文件到本地。
     :param assets_url : 更新文件的URL。
     """
+    if IS_MACOS:
+        log.warning("macOS 版暂不支持自动更新，请重新下载最新安装包，或在仓库目录执行 git pull")
+        return
     # 检查URL是否有效
     if not is_valid_url(assets_url):
         log.error("更新失败：获取的URL无效 ")

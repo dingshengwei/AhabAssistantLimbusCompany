@@ -1,10 +1,12 @@
 import os
+import subprocess
 import webbrowser
 from time import sleep, time
 
 import psutil
 
 from module.config import cfg
+from module.platform import IS_MACOS
 from utils.singletonmeta import SingletonMeta
 
 
@@ -32,8 +34,39 @@ class Game(metaclass=SingletonMeta):
                 continue
         return False
 
+    def _start_game_macos(self) -> bool:
+        """macOS：通过 open 启动 PlayCover 版应用或 MuMu Pro 模拟器。"""
+        candidates = [
+            self.game_path,
+            "LimbusCompany",
+            "Limbus Company",
+            "MuMu Pro",
+            "MuMu模拟器 Pro",
+            "MuMu Player Pro",
+        ]
+        for name in candidates:
+            if not name:
+                continue
+            try:
+                proc = subprocess.run(["open", "-a", name], capture_output=True, timeout=20)
+            except Exception as exc:
+                self.log.debug(f"尝试启动 {name} 失败: {exc}")
+                continue
+            if proc.returncode == 0:
+                self.log.info(f"已启动：{name}")
+                sleep(5)
+                return True
+            self.log.debug(f"open -a {name} 失败: {proc.stderr.decode(errors='ignore').strip()}")
+        self.log.error(
+            "macOS 上未能启动游戏：请安装 MuMu Pro 模拟器或 PlayCover 版 Limbus Company，"
+            "也可以在设置里手动填写游戏路径"
+        )
+        return False
+
     def start_game(self) -> bool:
         """启动游戏"""
+        if IS_MACOS:
+            return self._start_game_macos()
         if self.check_game_alive():
             if self.last_check_time is None or time() - self.last_check_time > 60:
                 self.last_check_time = time()

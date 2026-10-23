@@ -55,6 +55,7 @@ from typing import Callable
 from PySide6.QtWidgets import QApplication
 
 from app import mediator
+from module.platform import IS_MACOS
 
 APPID = "AALC_Notification"
 """注册表内的应用ID"""
@@ -265,6 +266,13 @@ def send_toast(
     Returns:
         bool: 发送是否成功
     """
+    if IS_MACOS:
+        # macOS 使用通知中心（osascript），失败也只是少一条提示
+        from module.platform.macos.notify import notify
+
+        text = "\n".join(msg) if isinstance(msg, (list, tuple)) else str(msg)
+        return notify(title, text)
+
     if IMPORT_SUCCESS is False:
         return True
     if template is not TemplateToast.NoneTemplate:

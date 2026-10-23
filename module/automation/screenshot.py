@@ -11,6 +11,10 @@ from module.config import cfg
 from module.game_and_screen import screen
 from module.logger import log
 from module.my_error.my_error import userStopError, withOutGameWinError
+from module.platform import IS_MACOS
+
+if IS_MACOS:
+    from module.platform.macos import capture as mac_capture
 
 
 class ScreenShot:
@@ -23,6 +27,8 @@ class ScreenShot:
         Returns:
             PIL.Image: 截图图像
         """
+        if IS_MACOS and not cfg.simulator:
+            return ScreenShot.macos_screenshot(gray)
         if cfg.simulator:
             if cfg.simulator_type == 0:
                 try:
@@ -62,6 +68,21 @@ class ScreenShot:
                     msg = f"pyautogui截图失败，错误信息：{e2}"
                     log.debug(msg)
                     return None
+
+    @staticmethod
+    def macos_screenshot(gray: bool = True) -> Image.Image | None:
+        """macOS 原生窗口截图（PlayCover 等），直接返回窗口像素图。"""
+        hwnd = screen.handle.hwnd
+        if not hwnd:
+            log.debug("macOS 截图失败：未找到游戏窗口")
+            return None
+        image = mac_capture.capture_window(hwnd)
+        if image is None:
+            log.debug(f"macOS 截图失败: {mac_capture.last_error()}")
+            return None
+        if gray:
+            image = image.convert("L")
+        return image
 
     @staticmethod
     def take_screenshot_gdi(gray: bool = True) -> Image.Image:

@@ -4,6 +4,7 @@ import ctypes
 from dataclasses import dataclass
 
 from module.logger import log
+from module.platform import IS_MACOS
 
 HDR_COLOR_SPACE = 12  # DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
 
@@ -202,6 +203,9 @@ def _enumerate_output_descs(factory_ptr: int) -> list[DXGI_OUTPUT_DESC1]:
 
 def enumerate_hdr_displays() -> list[HdrDisplayInfo]:
     """Return HDR color-space information for current display outputs."""
+    if IS_MACOS:
+        # macOS 没有 DXGI，HDR/SDR 不影响截图取色
+        return []
     hr = _ole32.CoInitializeEx(None, COINIT_APARTMENTTHREADED)
     if hr not in (S_OK, S_FALSE):
         log.warning(f"COM 初始化失败，跳过 HDR 检测: 0x{hr & 0xFFFFFFFF:08X}")

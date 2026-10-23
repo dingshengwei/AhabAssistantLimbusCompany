@@ -13,6 +13,7 @@ import numpy as np
 import psutil
 from PIL.Image import Image
 
+from module.platform import IS_MACOS
 from utils.image_utils import ImageUtils
 from utils.path_manager import path_manager
 from utils.singletonmeta import SingletonMeta
@@ -77,7 +78,13 @@ class Automation(metaclass=SingletonMeta):
                 self.input_handler = SimulatorControl.connection_device
         else:
             input_type = cfg.win_input_type
-            if input_type == "background":
+            if IS_MACOS:
+                # macOS 没有 Win32 后台输入，统一使用前台 CGEvent 输入
+                from module.platform.macos.input import MacInput
+
+                log.debug("使用 macOS 前台输入模块（CGEvent）")
+                self.input_handler = MacInput()
+            elif input_type == "background":
                 from .input_handlers.input import BackgroundInput
 
                 log.debug("使用后台点击模块")

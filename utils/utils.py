@@ -12,6 +12,7 @@ import win32crypt
 
 from module.config import cfg
 from module.logger import log
+from module.platform import IS_MACOS
 
 
 def get_day_of_week():
@@ -230,6 +231,15 @@ def run_as_user(command: list[str], timeout: int = 30):
     """
     使用任务计划程序以当前用户身份运行命令，优化了路径转义和阻塞处理。
     """
+    if IS_MACOS:
+        # macOS 没有任务计划程序的提权问题，直接以当前用户启动
+        try:
+            proc = subprocess.Popen(command)
+            log.debug(f"run_as_user 直接启动: {command} (pid={proc.pid})")
+        except Exception as exc:
+            log.error(f"run_as_user 启动失败: {exc}")
+        return
+
     task_name = "TempNonAdminTask"
     bat_path = None
     vbs_path = None

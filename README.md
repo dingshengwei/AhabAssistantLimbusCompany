@@ -24,6 +24,8 @@
 
 **简体中文** | [English](assets/doc/en/README_EN.md)
 
+> **macOS 分支**：本仓库的 `macos` 分支提供了 macOS 平台适配（MuMu Pro / PlayCover 两种运行方式），详见 [docs/MACOS.md](docs/MACOS.md)。
+
 遇到问题，请在提问前查看：[FAQ](assets/doc/zh/FAQ.md)
 
   ---
