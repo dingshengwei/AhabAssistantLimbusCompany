@@ -89,11 +89,18 @@ def main() -> int:
         if "limbus" in text:
             candidates.append(item)
 
-    if not candidates:
+    if not candidates and adb_status["devices"]:
+        # 模拟器模式：检查设备里是否装了/开着游戏
+        device = adb_status["devices"][0]
+        package = "com.ProjectMoon.LimbusCompany"
+        installed = package in (adb.run_adb(["-s", device, "shell", "pm", "list", "packages", package]) or "").stdout
+        report("游戏（模拟器）", OK if installed else FAIL, f"{device}: {'已安装' if installed else '未安装 Limbus Company，请先在 Play 商店安装'}")
+        problems += 0 if installed else 1
+    elif not candidates:
         report(
             "游戏窗口",
             FAIL,
-            "未找到 LimbusCompany 窗口。PlayCover / 模拟器里先把游戏开起来",
+            "未找到 LimbusCompany 窗口。PlayCover 里先把游戏开起来，或用 AVD/模拟器 + adb 模式",
         )
         problems += 1
     else:

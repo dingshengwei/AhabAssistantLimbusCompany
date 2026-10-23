@@ -34,12 +34,12 @@ MuMu Pro 是收费的，macOS 上可以完全免费跑起来，按推荐顺序�
 
 | 方案 | 费用 | AALC 走哪条链路 | 适配度 |
 |---|---|---|---|
-| **PlayCover**（本机已装） | 免费开源 | 原生窗口（ScreenCaptureKit + CGEvent） | 实验性：需把窗口设成 16:9 |
-| **BlueStacks Air** | 免费（可选购会员） | adb（`simulator_type=10`，端口 5555） | 好，安卓版 16:9 |
-| **Android Studio AVD** | 完全免费开源 | adb（端口 5555） | 好，但性能一般、内存占用高 |
+| **Android Studio AVD**（推荐，已为你装好） | 完全免费开源 | adb（端口填 `0` 自动选设备） | 好：安卓版 16:9，可后台 |
+| **PlayCover**（本机已装，但需要 IPA） | 免费开源 | 原生窗口（ScreenCaptureKit + CGEvent） | 实验性：需把窗口设成 16:9 |
+| **BlueStacks Air** | 免费（可选购会员） | adb（端口 5555，需确认有 ADB 开关） | 好，安卓版 16:9 |
 | ~~MuMu Pro~~ | 收费 | adb（端口 16384） | 好，但要花钱 |
 
-**结论**：想零成本又稳，选 **BlueStacks Air**（安卓版 + adb）；不想再装模拟器就用 **PlayCover**，但必须把窗口调成 16:9，否则模板会错位。
+**结论**：没有 IPA 就走 **AVD**（安卓版 + adb，免费且链路最稳）；有 IPA 且不想开模拟器再用 **PlayCover**（窗口必须 16:9）。
 
 ### PlayCover 方式（零安装成本）
 
@@ -55,63 +55,51 @@ MuMu Pro 是收费的，macOS 上可以完全免费跑起来，按推荐顺序�
 > AALC 会在日志里告警并大概率识别失败，务必先按上面的方式改成 1920×1080。
 > 若画面上下/左右出现黑边（应用内 letterbox），也需要在应用设置里改成拉伸/填充。
 
-### BlueStacks Air / Android Studio AVD（安卓版 + adb）
+### Android Studio AVD（推荐，完全免费）
 
-1. 安装 [BlueStacks Air](https://www.bluestacks.com/mac)（Apple Silicon 版，免费）
-   或 Android Studio 的 AVD（Android 11+ arm64 镜像）；
-2. 打开 ADB 调试：
-   - BlueStacks Air：设置 → 高级 → 开启 Android Debug Bridge（默认 `127.0.0.1:5555`）
-   - AVD：启动时加 `-writable-system` 即可，adb 端口固定 `5555`
-3. 装好 adb（本仓库脚本，一次性）：
+一条命令装好（SDK + emulator + Google Play arm64 镜像 + 竖屏 1080x1920 的 AVD）：
 
-   ```bash
-   ./scripts/setup_adb_macos.sh          # 下载官方 platform-tools 到 assets/binary/platform-tools
-   ```
+```bash
+./scripts/setup_avd_macos.sh          # 约 3GB 下载，装到 ~/Library/Android/sdk
+./scripts/start_avd_macos.sh          # 以后每次启动模拟器
+```
 
-4. AALC 设置页：勾选「使用模拟器」→ 类型选「其他」→ 主机 `127.0.0.1` → 端口 `5555`
-5. 游戏分辨率建议在模拟器里设成 **1920×1080（16:9）**，与 `set_win_size` 一致。
+然后在模拟器里：
 
-`config.yaml` 对应键：
+1. 打开 Play 商店，登录 Google 账号；
+2. 搜索安装 **Limbus Company**（免费），登录游戏账号；
+3. 回到 Mac 终端确认设备在线：
+
+```bash
+~/Library/Android/sdk/platform-tools/adb devices
+# emulator-5554   device
+```
+
+AALC 设置页：勾选「使用模拟器」→ 类型「其他」→ 主机 `127.0.0.1` → **端口填 `0`**。
+端口为 0 表示「自动选择 adb 设备列表里的第一台」，AVD 和 USB 真机都这样用，不需要
+`adb connect`。
 
 ```yaml
 simulator: true
 simulator_type: 10
 simulator_host: 127.0.0.1
-simulator_port: 5555     # MuMu Pro 用户填 16384
+simulator_port: 0        # 0 = 自动选择；MuMu Pro 用户填 16384，TCP 设备填 5555
 ```
 
-> 注：AALC 启动时会按 PATH、`assets/binary/platform-tools`、`~/Library/Android/sdk`
-> 的顺序找 adb；找不到会在日志里提示运行 `scripts/setup_adb_macos.sh`。
+> 为什么 AVD 用竖屏 1080x1920：AALC 的触摸坐标是「竖屏设备 + 横屏游戏」的模型
+> （`_scale` 会做一次旋转），和 MuMu 的行为一致。游戏横屏后截图仍是 1920x1080，
+> 与模板基准吻合。
 
-## 安装与启动
+> minitouch 说明：Google Play 镜像从 Android 11 起不允许 shell 读 `/dev/input`，
+> minitouch 起不来。本分支已自动退回 **`adb shell input`** 触摸后端（`shell_input.py`）：
+> 点击/截图不受影响，拖拽与滑动慢一些（每条命令约 35ms），跑日常与镜牢够用。
 
-前置：Python 3.12+（`brew install python@3.12`）、Xcode Command Line Tools。
+### BlueStacks Air（免费，但 ADB 不确定）
 
-```bash
-cd AALC
-./scripts/run_macos.sh        # 首次会建 .venv 并安装 requirements-macos.txt
-```
-
-也可以手动：
-
-```bash
-python3.12 -m venv .venv
-.venv/bin/pip install -r requirements-macos.txt
-.venv/bin/python main.py
-```
-
-环境自检（只读，不会动游戏，先跑它最快定位问题）：
-
-```bash
-./scripts/check_macos_env.py
-```
-
-首次启动需要在 AALC 里完成两项授权（系统设置 → 隐私与安全性）：
-
-1. **屏幕录制**：截图用。未授权时截图会全黑/失败。
-2. **辅助功能**：点击、拖拽、按键用。未授权时操作会被系统静默丢弃。
-
-授权对象是「运行 AALC 的终端 / Python」或打包后的 `AALC.app`；改完权限需重启进程。
+BlueStacks Air 是 Apple Silicon 上的免费版本，但**官方设置里可能没有 ADB 开关**
+（[第三方文档的说明](https://automationmacro.com/zh-CN/docs/bluestacks-setup-guide)）。
+如果你的版本有「设置 → 高级 → Android Debug Bridge」，可以照用：端口一般是 `5555`，
+AALC 里填 `127.0.0.1` + `5555`。没有这个开关就别折腾，直接用 AVD。
 
 ## 使用 PlayCover（实验性）
 

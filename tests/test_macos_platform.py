@@ -11,6 +11,12 @@ import pytest
 
 pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="macOS 平台后端测试")
 
+if sys.platform == "darwin":
+    # 单独运行某个用例时也要有 win32 替身，不能依赖其它用例先跑
+    from module.platform.macos.bootstrap import install as _install_macos_compat
+
+    _install_macos_compat()
+
 
 def test_is_macos_flag():
     from module.platform import IS_MACOS, IS_WINDOWS
@@ -102,8 +108,16 @@ def test_screenshot_returns_window_pixels(monkeypatch):
     if not capture.screen_permission_ok():
         pytest.skip("缺少屏幕录制权限")
 
+    # 该用例验证“窗口截图”，若用户配置里开着模拟器会走 adb 截图，这里临时关掉
+    from module.config import cfg
+
+    was_simulator = bool(cfg.get_value("simulator", False))
+    cfg.config.simulator = False
     monkeypatch.setattr(screen.handle, "_hwnd", target["id"], raising=False)
-    image = ScreenShot.take_screenshot(gray=False)
+    try:
+        image = ScreenShot.take_screenshot(gray=False)
+    finally:
+        cfg.config.simulator = was_simulator
     if image is None:
         pytest.skip(f"截图失败: {capture.last_error()}")
 

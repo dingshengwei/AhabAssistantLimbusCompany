@@ -299,10 +299,32 @@ class SimulatorControl(AbstractInput):
             sleep(min(1, remaining))
         raise RuntimeError(f"BlueStacks 5 Android 系统启动超时 ({timeout}s)")
 
+    @staticmethod
+    def _pick_connected_device() -> str | None:
+        """返回 ``adb devices`` 中第一台已授权设备（AVD / USB 真机）。"""
+        try:
+            for info in adb.list():
+                if info.state == "device":
+                    return info.serial
+        except Exception as exc:
+            log.debug(f"枚举 adb 设备失败: {exc}")
+        return None
+
     def adb_connect(self):
-        """连接设置中指定的本地或远程 ADB TCP 设备。"""
+        """连接设置中指定的本地或远程 ADB TCP 设备。
+
+        ``simulator_port = 0`` 表示“自动选择”：直接使用 ``adb devices`` 里第一台已授权
+        设备，不需要 adb connect —— Android Studio AVD 与 USB 真机都走这条路径。
+        """
         host = cfg.simulator_host
         port = int(cfg.simulator_port)
+        if port == 0:
+            serial = self._pick_connected_device()
+            if serial is None:
+                raise RuntimeError("simulator_port=0 但当前没有已授权的 adb 设备，请先启动模拟器")
+            self.simulator_port = serial
+            log.info(f"自动选择 adb 设备: {serial}")
+            return
         should_auto_start_bluestacks = (
             getattr(cfg, "simulator_type", 10) == BLUESTACKS_SIMULATOR_TYPE and is_local_adb_host(host)
         )
@@ -365,6 +387,9 @@ class SimulatorControl(AbstractInput):
     def adb_disconnect(self):
         if self.simulator_port is None:
             return
+        if ":" not in str(self.simulator_port):
+            # AVD / USB 设备不是 adb connect 建立的 TCP 传输，无法“断开”
+            return
         try:
             for _ in range(3):
                 msg = adb.disconnect(self.simulator_port)
@@ -421,8 +446,18 @@ class SimulatorControl(AbstractInput):
                 # 提取目标设备的序列号
                 target_serial = self.simulator_device.serial
 
-                # 通过序列号获取设备对象
-                self.simulator_control = MNTDevice(target_serial)
+                # 通过序列号获取设备对象；minitouch 需要 /dev/input 权限，
+                # Android 11+ 的 Play 镜像上通常拿不到，失败时退回 adb shell input
+                try:
+                    self.simulator_control = MNTDevice(target_serial)
+                except Exception as mnt_error:
+                    log.warning(
+                        f"minitouch 初始化失败（{mnt_error}），改用 adb shell input 兜底："
+                        "拖拽/滑动会变慢，但点击与截图不受影响"
+                    )
+                    from .shell_input import AdbShellInput
+
+                    self.simulator_control = AdbShellInput(self.simulator_device)
 
                 # 提取分辨率（如 1080x1920）
                 size_output = self.simulator_device.shell(["wm", "size"])
@@ -435,7 +470,7 @@ class SimulatorControl(AbstractInput):
 
                     self.simulator_control.real_width = width
                     self.simulator_control.real_height = height
-                    if int(self.simulator_control.connection.max_x) > 1440:
+                    if int(getattr(self.simulator_control.connection, "max_x", 0)) > 1440:
                         self.simulator_bluestacks = True
 
                 SimulatorControl.connection_device = self

@@ -185,21 +185,40 @@ def _capture_cli(win_id: int) -> Image.Image:
         path.unlink(missing_ok=True)
 
 
+def _normalize_size(image: Image.Image, rect) -> Image.Image:
+    """把截图缩放到窗口的逻辑尺寸，保证“截图像素 == 窗口 rect”这一不变量。
+
+    ScreenCaptureKit 失败退到 ``screencapture -l`` 时，返回的是窗口原生分辨率
+    （Retina/模拟器会是 2x 甚至更高），不归一化会让模板匹配与点击坐标错位。
+    """
+    expected = (max(1, int(round(rect[2] - rect[0]))), max(1, int(round(rect[3] - rect[1]))))
+    if image.size == expected:
+        return image
+    log.debug(f"截图尺寸 {image.size} 与窗口尺寸 {expected} 不一致，归一化后返回")
+    return image.resize(expected, Image.LANCZOS)
+
+
 def capture_window(win_id: int, prefer_sck: bool = True) -> Image.Image | None:
     """截取指定窗口，返回 RGB 图像；失败返回 None。"""
     global _last_error
     if not win_id:
         _last_error = "无效的窗口句柄"
         return None
+    rect = None
+    info = window.window_info(win_id)
+    if info is not None:
+        rect = info["rect"]
     if _HAS_SCK and prefer_sck:
         try:
-            return _capture_sck(win_id)
+            image = _capture_sck(win_id)
+            return _normalize_size(image, rect) if rect else image
         except Exception as exc:
             _last_error = str(exc)
             _filter_cache.pop(win_id, None)
             log.debug(f"ScreenCaptureKit 截图失败，改用 screencapture: {exc}")
     try:
-        return _capture_cli(win_id)
+        image = _capture_cli(win_id)
+        return _normalize_size(image, rect) if rect else image
     except Exception as exc:
         _last_error = str(exc)
         log.debug(f"screencapture 截图失败: {exc}")
